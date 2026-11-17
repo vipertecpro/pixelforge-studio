@@ -7,24 +7,16 @@ import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/security';
-import type { Props as ManagePasskeysProps } from '@/components/ManagePasskeys.vue';
-import ManagePasskeys from '@/components/ManagePasskeys.vue';
-import type { Props as ManageTwoFactorProps } from '@/components/ManageTwoFactor.vue';
-import ManageTwoFactor from '@/components/ManageTwoFactor.vue';
 
-// oxfmt-ignore
-type Props = {
+const props = defineProps<{
     passwordRules: string;
-} & ManagePasskeysProps &
-    ManageTwoFactorProps;
-
-const props = defineProps<Props>();
+}>();
 
 defineOptions({
     layout: {
         breadcrumbs: [
             {
-                title: 'Security settings',
+                title: 'Password',
                 href: edit(),
             },
         ],
@@ -33,15 +25,15 @@ defineOptions({
 </script>
 
 <template>
-    <Head title="Security settings" />
+    <Head title="Password" />
 
-    <h1 class="sr-only">Security settings</h1>
+    <h1 class="sr-only">Password</h1>
 
     <div class="space-y-6">
         <Heading
             variant="small"
             title="Update password"
-            description="Ensure your account is using a long, random password to stay secure"
+            description="Use a long, random password to keep your account secure"
         />
 
         <Form
@@ -106,15 +98,4 @@ defineOptions({
             </div>
         </Form>
     </div>
-
-    <ManageTwoFactor
-        :canManageTwoFactor="canManageTwoFactor"
-        :requiresConfirmation="requiresConfirmation"
-        :twoFactorEnabled="twoFactorEnabled"
-    />
-
-    <ManagePasskeys
-        :canManagePasskeys="canManagePasskeys"
-        :passkeys="passkeys"
-    />
 </template>

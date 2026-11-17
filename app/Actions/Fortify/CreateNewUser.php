@@ -32,10 +32,6 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $input['password'],
         ]);
 
-        // This app sends no email, so a new account counts as verified straight
-        // away. Otherwise a reviewer could never get past the verification screen.
-        $user->forceFill(['email_verified_at' => now()])->save();
-
         app(CreditLedger::class)->add(
             $user,
             CreditTransactionType::SignupBonus,

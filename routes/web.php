@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware('auth')->group(function () {
     Route::redirect('dashboard', '/generate')->name('dashboard');
 
     Route::get('generate', [GenerationController::class, 'create'])->name('generations.create');
