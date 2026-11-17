@@ -126,6 +126,10 @@ Markup, limits and credit packs are in `config/pixelforge.php`.
   the verification screen.
 - **Images are not copied.** Pixelforge's links expire after 24 hours; the history says so instead of showing
   a broken image. Copying them to storage is the obvious next step for a real product.
+- **Dependencies are current, with two deliberate exceptions.** `composer audit` and `npm audit` report
+  nothing. TypeScript stays on 6.x because `vue-tsc` can't run on TypeScript 7 yet, and `vite-plus` stays on
+  1.6 because 1.7 breaks the Vue compiler's type-import resolution (every shadcn component fails to build).
+  Both are one-line bumps once upstream catches up.
 - **Fair use**: at most 3 images in progress and 60 a day per user, because Pixelforge's limits (3 at once,
   500 a day) are shared by every user of the account.
 - **A price rise mid-flight** could, in theory, make a charge slightly larger than what was held; the balance
