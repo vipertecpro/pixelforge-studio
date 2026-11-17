@@ -12,14 +12,14 @@ where most of the care went.
 
 ## What it does
 
-| Brief | Where it lives |
-| --- | --- |
-| Generate page with prompt, size, quality, reference images, and the cost before submitting | `resources/js/pages/generations/Create.vue`, `GenerationController@estimate`, `app/Pricing/` |
-| Cost plus 25%, estimate up front, actual recorded on completion, failures free | `GenerationPricer`, `GenerationSettler` |
-| History with live status, estimate, actual cost and image | `resources/js/pages/generations/Index.vue`, `GenerationCard.vue` |
-| Webhooks: verified, duplicate-safe, order-safe | `PixelforgeWebhookController`, `WebhookSignature`, `ProcessPixelforgeEvent`, `GenerationSettler` |
-| Stretch: admin report that matches `GET /v1/usage` | `Admin/ReportController`, `UsageReport` |
-| Stretch: balances, fake "Buy credits", blocking when you can't afford it | `CreditLedger`, `CreditController`, `GenerationController@store` |
+| Brief                                                                                      | Where it lives                                                                                   |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Generate page with prompt, size, quality, reference images, and the cost before submitting | `resources/js/pages/generations/Create.vue`, `GenerationController@estimate`, `app/Pricing/`     |
+| Cost plus 25%, estimate up front, actual recorded on completion, failures free             | `GenerationPricer`, `GenerationSettler`                                                          |
+| History with live status, estimate, actual cost and image                                  | `resources/js/pages/generations/Index.vue`, `GenerationCard.vue`                                 |
+| Webhooks: verified, duplicate-safe, order-safe                                             | `PixelforgeWebhookController`, `WebhookSignature`, `ProcessPixelforgeEvent`, `GenerationSettler` |
+| Stretch: admin report that matches `GET /v1/usage`                                         | `Admin/ReportController`, `UsageReport`                                                          |
+| Stretch: balances, fake "Buy credits", blocking when you can't afford it                   | `CreditLedger`, `CreditController`, `GenerationController@store`                                 |
 
 Sign-up, sign-in and the settings pages come from Laravel's official Vue starter kit. Everything described
 here is in the files named above.
@@ -110,13 +110,13 @@ Handy prompt keywords from the Pixelforge docs: `[fail]`, `[blocked]`, `[overloa
 
 ## Configuration
 
-| Variable | Purpose |
-| --- | --- |
-| `PIXELFORGE_API_KEY` | This environment's Pixelforge key |
-| `PIXELFORGE_WEBHOOK_SECRET` | That key's webhook signing secret (`whsec_...`) |
-| `PIXELFORGE_BASE_URL` | Defaults to `https://pixelforge.promptedit.dev/v1` |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Read only by `pixelforge:admin` |
-| `TRUSTED_PROXIES` | `*` behind a host's load balancer |
+| Variable                        | Purpose                                            |
+| ------------------------------- | -------------------------------------------------- |
+| `PIXELFORGE_API_KEY`            | This environment's Pixelforge key                  |
+| `PIXELFORGE_WEBHOOK_SECRET`     | That key's webhook signing secret (`whsec_...`)    |
+| `PIXELFORGE_BASE_URL`           | Defaults to `https://pixelforge.promptedit.dev/v1` |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Read only by `pixelforge:admin`                    |
+| `TRUSTED_PROXIES`               | `*` behind a host's load balancer                  |
 
 Markup, limits and credit packs are in `config/pixelforge.php`.
 
