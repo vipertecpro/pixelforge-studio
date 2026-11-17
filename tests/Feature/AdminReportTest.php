@@ -259,3 +259,21 @@ describe('the connection card', function () {
             ->where('connection.last_event_at', $event->created_at->toIso8601String()));
     });
 });
+
+describe('deleted accounts', function () {
+    it('keep their images in the report, so it still agrees with Pixelforge', function () {
+        $gone = User::factory()->create(['name' => 'Gone', 'email' => 'gone@example.com']);
+        Generation::factory()->for($gone)->accepted()->create([
+            'status' => GenerationStatus::Succeeded, 'provider_cost_nano' => 100_000_000, 'charged_nano' => 125_000_000, 'completed_at' => '2026-11-16 10:00:00',
+        ]);
+        $gone->delete();
+        fakePixelforgeUsage([['date' => '2026-11-16', 'generations' => 1, 'cost_usd' => '0.100000000'], ['date' => '2026-11-17', 'generations' => 0, 'cost_usd' => '0.000000000']]);
+
+        $this->actingAs(admin())->get(route('admin.report', [...REPORT_DATES, 'view' => 'user']))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('totals.reconciliation', 'match')
+                ->has('users', 1)
+                ->where('users.0.name', 'Deleted account')
+                ->where('users.0.charged', '$0.1250'));
+    });
+});

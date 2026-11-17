@@ -41,6 +41,13 @@ return [
     'pricing_cache_seconds' => 60,
 
     /*
+    | Load balancers whose forwarded headers are trusted: "*" behind a host that
+    | always fronts the app (Render, Laravel Cloud), a comma-separated list of
+    | addresses otherwise, or empty to trust none.
+    */
+    'trusted_proxies' => env('TRUSTED_PROXIES'),
+
+    /*
     |--------------------------------------------------------------------------
     | Credits
     |--------------------------------------------------------------------------

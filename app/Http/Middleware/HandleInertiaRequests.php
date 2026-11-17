@@ -44,8 +44,8 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'credits' => fn (): ?array => $request->user() === null ? null : [
-                'balance' => Nano::format(app(CreditLedger::class)->balanceNano($request->user()), 2),
-                'available' => Nano::format(app(CreditLedger::class)->availableNano($request->user()), 2),
+                'balance' => Nano::format(app(CreditLedger::class)->summary($request->user())['balance'], 2),
+                'available' => Nano::format(max(0, app(CreditLedger::class)->summary($request->user())['available']), 2),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

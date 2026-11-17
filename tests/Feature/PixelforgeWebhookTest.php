@@ -202,3 +202,13 @@ describe('duplicate and out-of-order events', function () {
         expect($generation->refresh()->status)->toBe(GenerationStatus::Queued);
     });
 });
+
+describe('stateless', function () {
+    it('starts no session and sets no cookie, so webhooks cannot fill the sessions table', function () {
+        $response = deliverWebhook($this, webhookEvent('evt_1', 'ping', []));
+
+        $response->assertNoContent();
+        expect($response->headers->getCookies())->toBe([])
+            ->and(DB::table('sessions')->count())->toBe(0);
+    });
+});

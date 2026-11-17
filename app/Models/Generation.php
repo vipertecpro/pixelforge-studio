@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property string $id
- * @property int $user_id
+ * @property int|null $user_id
+ * @property string|null $request_id
  * @property string|null $pixelforge_id
  * @property GenerationStatus $status
  * @property string $prompt
@@ -33,9 +34,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
- * @property-read User $user
+ * @property-read User|null $user
  */
-#[Fillable(['user_id', 'status', 'prompt', 'size', 'quality', 'reference_images', 'estimated_min_nano', 'estimated_max_nano'])]
+#[Fillable(['user_id', 'request_id', 'status', 'prompt', 'size', 'quality', 'reference_images', 'estimated_min_nano', 'estimated_max_nano'])]
 class Generation extends Model
 {
     /** @use HasFactory<GenerationFactory> */

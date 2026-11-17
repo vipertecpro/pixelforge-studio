@@ -7,6 +7,7 @@ use App\Enums\GenerationStatus;
 use App\Models\CreditTransaction;
 use App\Models\Generation;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * A user's credits, in nanodollars. Three numbers matter:
@@ -37,13 +38,51 @@ final class CreditLedger
         return $this->balanceNano($user) - $this->reservedNano($user);
     }
 
-    public function add(User $user, CreditTransactionType $type, int $amountNano, ?string $description = null): CreditTransaction
+    /**
+     * All three numbers in two queries, for pages that show them together.
+     *
+     * @return array{balance: int, reserved: int, available: int}
+     */
+    public function summary(User $user): array
     {
-        return $user->creditTransactions()->create([
-            'type' => $type,
-            'amount_nano' => $amountNano,
-            'description' => $description,
-        ]);
+        $balance = $this->balanceNano($user);
+        $reserved = $this->reservedNano($user);
+
+        return ['balance' => $balance, 'reserved' => $reserved, 'available' => $balance - $reserved];
+    }
+
+    /**
+     * Add a credit or debit. With an idempotency key, asking again with the same
+     * key returns the first row instead of crediting twice (double clicks,
+     * retries after a lost response).
+     */
+    public function add(
+        User $user,
+        CreditTransactionType $type,
+        int $amountNano,
+        ?string $description = null,
+        ?string $idempotencyKey = null,
+    ): CreditTransaction {
+        if ($idempotencyKey !== null && ($existing = $this->withKey($user, $idempotencyKey)) !== null) {
+            return $existing;
+        }
+
+        try {
+            return $user->creditTransactions()->create([
+                'type' => $type,
+                'amount_nano' => $amountNano,
+                'description' => $description,
+                'idempotency_key' => $idempotencyKey,
+            ]);
+        } catch (UniqueConstraintViolationException $exception) {
+            // Two identical requests raced; the other one won.
+            return $this->withKey($user, (string) $idempotencyKey) ?? throw $exception;
+        }
+    }
+
+    private function withKey(User $user, string $idempotencyKey): ?CreditTransaction
+    {
+        return $user->creditTransactions()->where('idempotency_key', $idempotencyKey)->first();
     }
 
     /**

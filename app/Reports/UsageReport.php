@@ -7,6 +7,7 @@ use App\Models\Generation;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Money by day and by user, from our own records. Only succeeded generations
@@ -39,7 +40,7 @@ final class UsageReport
     }
 
     /**
-     * @return array<int, array{user_id: int, name: string, email: string, generations: int, charged: int, cost: int}>
+     * @return array<int, array{user_id: int|null, name: string, email: string, generations: int, charged: int, cost: int}>
      */
     public function byUser(CarbonImmutable $from, CarbonImmutable $to): array
     {
@@ -48,13 +49,13 @@ final class UsageReport
             ->groupBy('user_id')
             ->get();
 
-        $users = User::query()->whereIn('id', $rows->pluck('user_id'))->get()->keyBy('id');
+        $users = User::query()->whereIn('id', $rows->pluck('user_id')->filter())->get()->keyBy('id');
 
         return $rows
             ->map(fn (Generation $row): array => [
                 'user_id' => $row->user_id,
-                'name' => $users[$row->user_id]->name ?? 'Deleted user',
-                'email' => $users[$row->user_id]->email ?? '',
+                'name' => $this->owner($users, $row)->name ?? 'Deleted account',
+                'email' => $this->owner($users, $row)->email ?? '',
                 ...$this->totals($row),
             ])
             ->sortByDesc('charged')
@@ -63,7 +64,7 @@ final class UsageReport
     }
 
     /**
-     * @return array<int, array{day: string, user_id: int, name: string, email: string, generations: int, charged: int, cost: int}>
+     * @return array<int, array{day: string, user_id: int|null, name: string, email: string, generations: int, charged: int, cost: int}>
      */
     public function byDayAndUser(CarbonImmutable $from, CarbonImmutable $to): array
     {
@@ -72,14 +73,14 @@ final class UsageReport
             ->groupBy('day', 'user_id')
             ->get();
 
-        $users = User::query()->whereIn('id', $rows->pluck('user_id'))->get()->keyBy('id');
+        $users = User::query()->whereIn('id', $rows->pluck('user_id')->filter())->get()->keyBy('id');
 
         return $rows
             ->map(fn (Generation $row): array => [
                 'day' => (string) $row->getAttribute('day'),
                 'user_id' => $row->user_id,
-                'name' => $users[$row->user_id]->name ?? 'Deleted user',
-                'email' => $users[$row->user_id]->email ?? '',
+                'name' => $this->owner($users, $row)->name ?? 'Deleted account',
+                'email' => $this->owner($users, $row)->email ?? '',
                 ...$this->totals($row),
             ])
             ->sortBy([['day', 'desc'], ['charged', 'desc']])
@@ -96,6 +97,17 @@ final class UsageReport
             ->where('status', GenerationStatus::Succeeded)
             ->where('completed_at', '>=', $from->startOfDay())
             ->where('completed_at', '<=', $to->endOfDay());
+    }
+
+    /**
+     * The row's user, or null when the account was deleted (its images stay in
+     * the books, so the report keeps agreeing with Pixelforge).
+     *
+     * @param  Collection<int, User>  $users
+     */
+    private function owner(Collection $users, Generation $row): ?User
+    {
+        return $row->user_id === null ? null : $users->get($row->user_id);
     }
 
     /**

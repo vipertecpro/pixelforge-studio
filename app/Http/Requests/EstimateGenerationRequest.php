@@ -17,6 +17,7 @@ class EstimateGenerationRequest extends StoreGenerationRequest
     {
         return [
             ...parent::rules(),
+            'request_id' => ['nullable', 'uuid'],
             'prompt' => ['nullable', 'string', 'max:'.self::MAX_PROMPT_LENGTH],
         ];
     }

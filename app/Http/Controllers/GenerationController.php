@@ -10,7 +10,6 @@ use App\Http\Requests\EstimateGenerationRequest;
 use App\Http\Requests\StoreGenerationRequest;
 use App\Http\Resources\GenerationResource;
 use App\Jobs\SubmitGeneration;
-use App\Models\Generation;
 use App\Models\User;
 use App\Pixelforge\PixelforgeApiException;
 use App\Pixelforge\PixelforgeClient;
@@ -36,8 +35,14 @@ class GenerationController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
+        // "Try again" and "Make another like this" open the form filled in from
+        // one of the user's own images (never anybody else's).
+        $source = $request->filled('from')
+            ? $request->user()->generations()->find($request->string('from')->toString())
+            : null;
+
         return Inertia::render('generations/Create', [
             'sizes' => array_column(ImageSize::cases(), 'value'),
             'qualities' => array_column(ImageQuality::cases(), 'value'),
@@ -46,6 +51,12 @@ class GenerationController extends Controller
                 'reference_images' => StoreGenerationRequest::MAX_REFERENCE_IMAGES,
             ],
             'markupPercent' => (int) config('pixelforge.markup_percent'),
+            'prefill' => $source === null ? null : [
+                'prompt' => $source->prompt,
+                'size' => $source->size,
+                'quality' => $source->quality,
+                'reference_images' => $source->reference_images,
+            ],
         ]);
     }
 
@@ -60,14 +71,16 @@ class GenerationController extends Controller
             return response()->json(['message' => 'Prices are unavailable right now. Please try again in a moment.'], 503);
         }
 
+        $available = $ledger->summary($request->user())['available'];
+
         return response()->json([
             'min' => Nano::format($estimate->userMinNano),
             'max' => Nano::format($estimate->userMaxNano),
             'provider_min' => Nano::format($estimate->providerMinNano),
             'provider_max' => Nano::format($estimate->providerMaxNano),
             'markup_percent' => (int) config('pixelforge.markup_percent'),
-            'available' => Nano::format($ledger->availableNano($request->user()), 2),
-            'affordable' => $estimate->userMaxNano <= $ledger->availableNano($request->user()),
+            'available' => Nano::format($available, 2),
+            'affordable' => $estimate->userMaxNano <= $available,
             'tokens' => [
                 'text' => [$estimate->textTokensMin, $estimate->textTokensMax],
                 'image' => $estimate->imageTokens,
@@ -79,8 +92,6 @@ class GenerationController extends Controller
 
     public function store(StoreGenerationRequest $request, PixelforgeClient $client, GenerationPricer $pricer, CreditLedger $ledger): RedirectResponse
     {
-        $this->ensureWithinFairUse($request->user());
-
         try {
             $estimate = $this->estimateFor($request, $client, $pricer);
         } catch (PixelforgeApiException) {
@@ -89,10 +100,22 @@ class GenerationController extends Controller
             ]);
         }
 
-        // The balance is checked and the image saved under one lock on the user, so
-        // two quick submissions can't both spend the same credits.
-        $generation = DB::transaction(function () use ($request, $ledger, $estimate): Generation {
+        // Everything that decides whether this image may be made happens under one
+        // lock on the user, so two quick submissions can't spend the same credits
+        // or beat the limits.
+        [$generation, $created] = DB::transaction(function () use ($request, $ledger, $estimate): array {
             $user = User::query()->lockForUpdate()->findOrFail($request->user()->id);
+            $requestId = $request->string('request_id')->toString();
+
+            // The same submission arriving again (double click, back button) is
+            // answered with the image it already made.
+            $existing = $user->generations()->where('request_id', $requestId)->first();
+
+            if ($existing !== null) {
+                return [$existing, false];
+            }
+
+            $this->ensureWithinFairUse($user);
             $available = $ledger->availableNano($user);
 
             if ($estimate->userMaxNano > $available) {
@@ -102,7 +125,8 @@ class GenerationController extends Controller
                 ]);
             }
 
-            return $user->generations()->create([
+            return [$user->generations()->create([
+                'request_id' => $requestId,
                 'status' => GenerationStatus::Queued,
                 'prompt' => $request->string('prompt')->toString(),
                 'size' => $request->string('size')->toString(),
@@ -110,11 +134,13 @@ class GenerationController extends Controller
                 'reference_images' => $request->referenceImages(),
                 'estimated_min_nano' => $estimate->userMinNano,
                 'estimated_max_nano' => $estimate->userMaxNano,
-            ]);
+            ]), true];
         });
 
-        // Sending to Pixelforge happens in the background, with retries.
-        SubmitGeneration::dispatch($generation->id);
+        if ($created) {
+            // Sending to Pixelforge happens in the background, with retries.
+            SubmitGeneration::dispatch($generation->id);
+        }
 
         return to_route('generations.index');
     }

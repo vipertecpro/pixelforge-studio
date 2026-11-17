@@ -76,3 +76,29 @@ it('gives up on a generation that could not be sent for an hour', function () {
         ->and($generation->charged_nano)->toBe(0);
     Queue::assertNothingPushed();
 });
+
+describe('a generation Pixelforge has lost', function () {
+    it('fails it after an hour and gives the held credits back', function () {
+        $generation = Generation::factory()->processing()->create(['created_at' => now()->subHours(2), 'updated_at' => now()->subHours(2)]);
+        Http::fake(["pixelforge.test/v1/generations/{$generation->pixelforge_id}" => Http::response(
+            ['error' => ['type' => 'invalid_request_error', 'code' => 'not_found', 'message' => 'No such generation.']], 404
+        )]);
+
+        $this->artisan('generations:sync')->assertSuccessful();
+
+        expect($generation->refresh()->status)->toBe(GenerationStatus::Failed)
+            ->and($generation->error_code)->toBe('lost')
+            ->and($generation->charged_nano)->toBe(0);
+    });
+
+    it('waits a while before giving up on a generation it can not find', function () {
+        $generation = Generation::factory()->processing()->create(['updated_at' => now()->subMinutes(5)]);
+        Http::fake(["pixelforge.test/v1/generations/{$generation->pixelforge_id}" => Http::response(
+            ['error' => ['type' => 'invalid_request_error', 'code' => 'not_found', 'message' => 'No such generation.']], 404
+        )]);
+
+        $this->artisan('generations:sync')->assertSuccessful();
+
+        expect($generation->refresh()->status)->toBe(GenerationStatus::Processing);
+    });
+});

@@ -15,14 +15,17 @@ return new class extends Migration
     {
         Schema::create('credit_transactions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('type');
             $table->bigInteger('amount_nano');
             $table->foreignUlid('generation_id')->nullable()->constrained()->nullOnDelete();
             $table->string('description')->nullable();
+            // Lets a top-up be retried safely: the same key never credits twice.
+            $table->string('idempotency_key', 64)->nullable();
             $table->timestamps();
 
             $table->unique(['generation_id', 'type']);
+            $table->unique(['user_id', 'idempotency_key']);
             $table->index(['user_id', 'created_at']);
         });
     }

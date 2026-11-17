@@ -17,11 +17,12 @@ class CreditController extends Controller
     public function index(Request $request, CreditLedger $ledger): Response
     {
         $user = $request->user();
+        $summary = $ledger->summary($user);
 
         return Inertia::render('credits/Index', [
-            'balance' => Nano::format($ledger->balanceNano($user), 2),
-            'reserved' => Nano::format($ledger->reservedNano($user), 2),
-            'available' => Nano::format($ledger->availableNano($user), 2),
+            'balance' => Nano::format($summary['balance'], 2),
+            'reserved' => Nano::format($summary['reserved'], 2),
+            'available' => Nano::format(max(0, $summary['available']), 2),
             'packs' => array_map(fn (int $usd): array => ['usd' => $usd, 'label' => '$'.$usd], $this->packs()),
             'transactions' => CreditTransactionResource::collection(
                 $user->creditTransactions()->with('generation:id,prompt')->latest('id')->paginate(10)
@@ -36,6 +37,7 @@ class CreditController extends Controller
     {
         $validated = $request->validate([
             'pack' => ['required', 'integer', Rule::in($this->packs())],
+            'request_id' => ['required', 'uuid'],
         ]);
 
         $ledger->add(
@@ -43,6 +45,7 @@ class CreditController extends Controller
             CreditTransactionType::TopUp,
             $validated['pack'] * Nano::PER_DOLLAR,
             'Test top-up (no payment taken)',
+            $validated['request_id'],
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => '$'.$validated['pack'].' of credits added.']);

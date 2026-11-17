@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -24,7 +25,7 @@ beforeEach(function () {
  */
 function creditsInput(array $overrides = []): array
 {
-    return ['prompt' => str_repeat('p', 40), 'size' => '1024x1024', 'quality' => 'medium', 'reference_images' => [], ...$overrides];
+    return ['request_id' => (string) Str::uuid(), 'prompt' => str_repeat('p', 40), 'size' => '1024x1024', 'quality' => 'medium', 'reference_images' => [], ...$overrides];
 }
 
 describe('the ledger', function () {
@@ -170,7 +171,7 @@ describe('buying credits', function () {
     it('adds credits straight away, with no payment', function () {
         $user = fundedUser(1);
 
-        $this->actingAs($user)->post(route('credits.store'), ['pack' => 10])->assertRedirect();
+        $this->actingAs($user)->post(route('credits.store'), ['request_id' => (string) Str::uuid(), 'pack' => 10])->assertRedirect();
 
         expect(app(CreditLedger::class)->balanceNano($user))->toBe(11_000_000_000);
     });
@@ -178,13 +179,72 @@ describe('buying credits', function () {
     it('only sells the packs on offer', function (mixed $pack) {
         $user = fundedUser(1);
 
-        $this->actingAs($user)->post(route('credits.store'), ['pack' => $pack])->assertSessionHasErrors('pack');
+        $this->actingAs($user)->post(route('credits.store'), ['request_id' => (string) Str::uuid(), 'pack' => $pack])->assertSessionHasErrors('pack');
 
         expect(app(CreditLedger::class)->balanceNano($user))->toBe(1_000_000_000);
     })->with([7, 0, -5, 1000000, 'lots', null]);
 
     it('sends guests to log in', function () {
         $this->get(route('credits.index'))->assertRedirect(route('login'));
-        $this->post(route('credits.store'), ['pack' => 5])->assertRedirect(route('login'));
+        $this->post(route('credits.store'), ['request_id' => (string) Str::uuid(), 'pack' => 5])->assertRedirect(route('login'));
+    });
+});
+
+describe('edge cases', function () {
+    it('adds a top-up once when the same click is sent twice', function () {
+        $user = fundedUser(1);
+        $id = (string) Str::uuid();
+
+        $this->actingAs($user)->post(route('credits.store'), ['request_id' => $id, 'pack' => 5]);
+        $this->actingAs($user)->post(route('credits.store'), ['request_id' => $id, 'pack' => 5]);
+
+        expect(app(CreditLedger::class)->balanceNano($user))->toBe(6_000_000_000);
+    });
+
+    it('adds two top-ups for two separate clicks', function () {
+        $user = fundedUser(1);
+
+        $this->actingAs($user)->post(route('credits.store'), ['request_id' => (string) Str::uuid(), 'pack' => 5]);
+        $this->actingAs($user)->post(route('credits.store'), ['request_id' => (string) Str::uuid(), 'pack' => 5]);
+
+        expect(app(CreditLedger::class)->balanceNano($user))->toBe(11_000_000_000);
+    });
+
+    it('gives the held credits straight back when an image fails', function () {
+        $user = fundedUser(1);
+        $generation = Generation::factory()->for($user)->processing()->create(['estimated_max_nano' => 400_000_000]);
+        $ledger = app(CreditLedger::class);
+        expect($ledger->availableNano($user))->toBe(600_000_000);
+
+        app(GenerationSettler::class)->apply(pixelforgePayload($generation->pixelforge_id, 'failed', $generation->id));
+
+        expect($ledger->availableNano($user))->toBe(1_000_000_000)
+            ->and($ledger->balanceNano($user))->toBe(1_000_000_000);
+    });
+
+    it('lets a balance dip below zero when prices rose mid-flight, and then blocks new images', function () {
+        Queue::fake();
+        $user = User::factory()->create();
+        app(CreditLedger::class)->add($user, CreditTransactionType::TopUp, 300_000_000);
+        $generation = Generation::factory()->for($user)->processing()->create(['estimated_max_nano' => 300_000_000]);
+
+        app(GenerationSettler::class)->apply(pixelforgePayload($generation->pixelforge_id, 'succeeded', $generation->id));
+
+        expect(app(CreditLedger::class)->balanceNano($user))->toBe(300_000_000 - 381_887_500);
+        $this->actingAs($user)->post(route('generations.store'), creditsInput())->assertSessionHasErrors('form');
+        Queue::assertNothingPushed();
+    });
+
+    it('keeps the books when an account is deleted', function () {
+        $user = fundedUser(5);
+        $generation = Generation::factory()->for($user)->processing()->create();
+        app(GenerationSettler::class)->apply(pixelforgePayload($generation->pixelforge_id, 'succeeded', $generation->id));
+
+        $user->delete();
+
+        expect(Generation::count())->toBe(1)
+            ->and($generation->refresh()->user_id)->toBeNull()
+            ->and($generation->charged_nano)->toBe(381_887_500)
+            ->and(CreditTransaction::where('type', CreditTransactionType::Charge)->sole()->user_id)->toBeNull();
     });
 });

@@ -31,6 +31,12 @@ const props = defineProps<{
     qualities: string[];
     limits: { prompt: number; reference_images: number };
     markupPercent: number;
+    prefill: {
+        prompt: string;
+        size: string;
+        quality: string;
+        reference_images: string[];
+    } | null;
 }>();
 
 defineOptions({
@@ -76,12 +82,17 @@ const qualityOptions = props.qualities.map((value) => ({
 }));
 
 const form = useForm({
-    prompt: '',
-    size: props.sizes[0] ?? '1024x1024',
-    quality: props.qualities.includes('medium')
-        ? 'medium'
-        : (props.qualities[0] ?? 'medium'),
-    reference_images: [] as string[],
+    // One id per page view: submitting twice (double click, back button) can
+    // only ever make one image.
+    request_id: crypto.randomUUID(),
+    prompt: props.prefill?.prompt ?? '',
+    size: props.prefill?.size ?? props.sizes[0] ?? '1024x1024',
+    quality:
+        props.prefill?.quality ??
+        (props.qualities.includes('medium')
+            ? 'medium'
+            : (props.qualities[0] ?? 'medium')),
+    reference_images: [...(props.prefill?.reference_images ?? [])],
 });
 
 const filledReferenceImages = computed(() =>

@@ -41,7 +41,7 @@ const props = defineProps<{
         matches: boolean | null;
     }[];
     users: {
-        user_id: number;
+        user_id: number | null;
         name: string;
         email: string;
         generations: number;
@@ -51,7 +51,7 @@ const props = defineProps<{
     }[];
     dayUsers: {
         day: string;
-        user_id: number;
+        user_id: number | null;
         name: string;
         email: string;
         generations: number;
@@ -284,7 +284,10 @@ const stats = computed(() => [
                         </tr>
                     </template>
                     <template v-else-if="filters.view === 'user'">
-                        <tr v-for="row in users" :key="row.user_id">
+                        <tr
+                            v-for="row in users"
+                            :key="row.user_id ?? 'deleted'"
+                        >
                             <td class="p-3">
                                 <div class="font-medium">{{ row.name }}</div>
                                 <div class="text-xs text-muted-foreground">
@@ -312,7 +315,7 @@ const stats = computed(() => [
                     <template v-else>
                         <tr
                             v-for="row in dayUsers"
-                            :key="row.day + row.user_id"
+                            :key="row.day + (row.user_id ?? 'deleted')"
                         >
                             <td class="p-3">{{ row.day }}</td>
                             <td class="p-3">

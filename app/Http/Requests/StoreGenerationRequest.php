@@ -47,6 +47,7 @@ class StoreGenerationRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'request_id' => ['required', 'uuid'],
             'prompt' => ['required', 'string', 'max:'.self::MAX_PROMPT_LENGTH],
             'size' => ['required', Rule::enum(ImageSize::class)],
             'quality' => ['required', Rule::enum(ImageQuality::class)],

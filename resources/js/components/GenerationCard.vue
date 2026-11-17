@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import {
     CircleCheck,
     CircleX,
     Clock,
     ImageOff,
     LoaderCircle,
+    RotateCcw,
     Send,
     TriangleAlert,
 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
+import { create } from '@/routes/generations';
 import type { Generation } from '@/types';
 
 const props = defineProps<{ generation: Generation }>();
@@ -96,6 +99,11 @@ const sizeText = computed(() => props.generation.size.replace('x', ' × '));
             class="relative flex w-full items-center justify-center overflow-hidden bg-muted"
             :class="aspect"
         >
+            <div
+                v-if="generation.image_url && !imageBroken && !imageLoaded"
+                class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/10 to-transparent motion-safe:animate-shimmer"
+                aria-hidden="true"
+            />
             <img
                 v-if="generation.image_url && !imageBroken"
                 :src="generation.image_url"
@@ -236,6 +244,22 @@ const sizeText = computed(() => props.generation.size.replace('x', ' × '));
                     }}
                 </template>
             </p>
+
+            <Link
+                v-if="
+                    generation.status === 'failed' ||
+                    generation.status === 'succeeded'
+                "
+                :href="create({ query: { from: generation.id } })"
+                class="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-primary underline-offset-4 hover:underline"
+            >
+                <RotateCcw class="size-3.5" aria-hidden="true" />
+                {{
+                    generation.status === 'failed'
+                        ? 'Try again'
+                        : 'Make another like this'
+                }}
+            </Link>
         </div>
     </article>
 </template>

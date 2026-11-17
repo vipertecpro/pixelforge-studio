@@ -45,7 +45,8 @@ function buy(pack: number) {
     buying.value = pack;
     router.post(
         store.url(),
-        { pack },
+        // A fresh id for each click, so a retry of the same click can't add twice.
+        { pack, request_id: crypto.randomUUID() },
         {
             preserveScroll: true,
             onFinish: () => (buying.value = null),

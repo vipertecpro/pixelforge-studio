@@ -6,6 +6,7 @@ use App\Models\Generation;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -20,6 +21,7 @@ beforeEach(function () {
 function generationInput(array $overrides = []): array
 {
     return [
+        'request_id' => (string) Str::uuid(),
         'prompt' => str_repeat('p', 40),
         'size' => '1024x1024',
         'quality' => 'medium',
@@ -274,5 +276,63 @@ describe('history', function () {
         $this->actingAs($user)
             ->get(route('generations.index'))
             ->assertInertia(fn (AssertableInertia $page) => $page->where('generations.data.0.sending', true));
+    });
+});
+
+describe('the same submission twice', function () {
+    it('makes one image, however many times the form is sent', function () {
+        Queue::fake();
+        $user = fundedUser();
+        $input = generationInput();
+
+        $this->actingAs($user)->post(route('generations.store'), $input)->assertRedirect(route('generations.index'));
+        $this->actingAs($user)->post(route('generations.store'), $input)->assertRedirect(route('generations.index'));
+
+        expect(Generation::count())->toBe(1);
+        Queue::assertPushed(SubmitGeneration::class, 1);
+    });
+
+    it('treats a different submission as a different image', function () {
+        Queue::fake();
+        $user = fundedUser();
+
+        $this->actingAs($user)->post(route('generations.store'), generationInput());
+        $this->actingAs($user)->post(route('generations.store'), generationInput());
+
+        expect(Generation::count())->toBe(2);
+    });
+
+    it('needs the id the browser makes for each page view', function () {
+        $this->actingAs(fundedUser())
+            ->post(route('generations.store'), generationInput(['request_id' => 'not-a-uuid']))
+            ->assertSessionHasErrors('request_id');
+    });
+});
+
+describe('try again', function () {
+    it('opens the form filled in from one of the user\'s own images', function () {
+        $user = fundedUser();
+        $failed = Generation::factory()->for($user)->create([
+            'prompt' => 'A red fox in snow', 'size' => '1536x1024', 'quality' => 'high', 'reference_images' => ['https://example.com/a.png'],
+        ]);
+
+        $this->actingAs($user)->get(route('generations.create', ['from' => $failed->id]))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('prefill.prompt', 'A red fox in snow')
+                ->where('prefill.size', '1536x1024')
+                ->where('prefill.quality', 'high')
+                ->where('prefill.reference_images', ['https://example.com/a.png']));
+    });
+
+    it('never fills the form from somebody else\'s image', function () {
+        $theirs = Generation::factory()->create(['prompt' => 'Private prompt']);
+
+        $this->actingAs(fundedUser())->get(route('generations.create', ['from' => $theirs->id]))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('prefill', null));
+    });
+
+    it('opens an empty form when nothing is asked for', function () {
+        $this->actingAs(fundedUser())->get(route('generations.create'))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('prefill', null));
     });
 });

@@ -52,6 +52,10 @@ class SyncGenerations extends Command
             } catch (PixelforgeApiException $exception) {
                 $this->components->warn("Could not poll {$generation->pixelforge_id}: {$exception->getMessage()}");
 
+                if ($exception->status === 404 && $generation->created_at?->lt(now()->subHour())) {
+                    $settler->failLost($generation->id);
+                }
+
                 if ($exception->status === 429) {
                     break;
                 }

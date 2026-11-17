@@ -91,6 +91,30 @@ final class GenerationSettler
     }
 
     /**
+     * Pixelforge answers 404 for a generation it has no record of. After a long
+     * wait the generation is failed (nothing is billed for it), which also
+     * releases the credits held for it.
+     */
+    public function failLost(string $generationId): void
+    {
+        DB::transaction(function () use ($generationId): void {
+            $generation = Generation::query()->lockForUpdate()->find($generationId);
+
+            if ($generation === null || $generation->status->isFinal()) {
+                return;
+            }
+
+            $generation->status = GenerationStatus::Failed;
+            $generation->error_code = 'lost';
+            $generation->error_message = 'Pixelforge has no record of this image any more. You were not charged.';
+            $generation->provider_cost_nano = 0;
+            $generation->charged_nano = 0;
+            $generation->completed_at = now();
+            $generation->save();
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
     private function findAndLock(array $payload): ?Generation

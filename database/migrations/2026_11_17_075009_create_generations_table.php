@@ -14,7 +14,11 @@ return new class extends Migration
     {
         Schema::create('generations', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            // Deleting an account keeps its generations, so the books still match Pixelforge's.
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            // Sent by the browser with each submission, so a double click or a replayed
+            // request can only ever create one generation.
+            $table->string('request_id', 64)->nullable();
             $table->string('pixelforge_id')->nullable()->unique();
             $table->string('status')->default('queued')->index();
 
@@ -40,6 +44,9 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['user_id', 'created_at']);
+            $table->index(['user_id', 'status']);
+            $table->index(['status', 'completed_at']);
+            $table->unique(['user_id', 'request_id']);
         });
     }
 

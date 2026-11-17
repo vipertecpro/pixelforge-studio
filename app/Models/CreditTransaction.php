@@ -12,16 +12,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
- * @property int $user_id
+ * @property int|null $user_id
  * @property CreditTransactionType $type
  * @property int $amount_nano positive for credit, negative for a charge
  * @property string|null $generation_id
  * @property string|null $description
+ * @property string|null $idempotency_key
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read Generation|null $generation
  */
-#[Fillable(['user_id', 'type', 'amount_nano', 'generation_id', 'description'])]
+#[Fillable(['user_id', 'type', 'amount_nano', 'generation_id', 'description', 'idempotency_key'])]
 class CreditTransaction extends Model
 {
     /** @use HasFactory<CreditTransactionFactory> */
