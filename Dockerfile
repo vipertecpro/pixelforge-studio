@@ -32,6 +32,9 @@ RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions 
 FROM dunglas/frankenphp:1.13-php8.5-bookworm AS app
 
 RUN install-php-extensions pdo_pgsql pcntl opcache zip
+# The server listens on a high port, so it needs no extra capabilities; some hosts
+# (Render among them) refuse to run a binary that carries them.
+RUN setcap -r /usr/local/bin/frankenphp
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/php.ini $PHP_INI_DIR/conf.d/zz-app.ini
 
