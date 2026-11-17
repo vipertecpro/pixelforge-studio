@@ -84,7 +84,7 @@ ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='a long random password' php artisan 
 
 ## Run it locally
 
-Needs PHP 8.4+, Composer, Node 22+.
+Needs PHP 8.3+ (tested on 8.4 and 8.5), Composer, and Node 22.18+, 24.11+ or 26+.
 
 ```bash
 composer setup                      # install, .env, key, migrate, build
