@@ -24,10 +24,16 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        return User::create([
+        $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
         ]);
+
+        // This app sends no email, so a new account counts as verified straight
+        // away. Otherwise a reviewer could never get past the verification screen.
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        return $user;
     }
 }

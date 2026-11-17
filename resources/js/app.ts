@@ -30,8 +30,10 @@ void createInertiaApp({
             },
         });
     },
+    // The progress bar's stylesheet is in app.css, because the security policy
+    // blocks the inline <style> Inertia would otherwise inject.
     progress: {
-        color: '#4B5563',
+        includeCSS: false,
     },
 });
 

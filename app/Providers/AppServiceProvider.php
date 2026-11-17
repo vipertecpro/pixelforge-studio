@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Pixelforge\PixelforgeClient;
+use App\Pixelforge\WebhookSignature;
+use App\Pricing\GenerationPricer;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +18,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(PixelforgeClient::class, fn (): PixelforgeClient => new PixelforgeClient(
+            baseUrl: (string) config('pixelforge.base_url'),
+            apiKey: config('pixelforge.api_key'),
+            pricingCacheSeconds: (int) config('pixelforge.pricing_cache_seconds'),
+        ));
+
+        $this->app->singleton(WebhookSignature::class, fn (): WebhookSignature => new WebhookSignature(
+            secret: config('pixelforge.webhook_secret'),
+            toleranceSeconds: (int) config('pixelforge.webhook_tolerance_seconds'),
+        ));
+
+        $this->app->singleton(GenerationPricer::class, fn (): GenerationPricer => new GenerationPricer(
+            markupPercent: (int) config('pixelforge.markup_percent'),
+        ));
     }
 
     /**

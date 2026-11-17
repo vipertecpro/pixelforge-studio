@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
-        <script>
+        <script nonce="{{ Vite::cspNonce() }}">
             (function() {
                 const appearance = '{{ $appearance ?? "system" }}';
 
@@ -20,19 +20,18 @@
         </script>
 
         {{-- Inline style to set the HTML background color based on our theme in app.css --}}
-        <style>
+        <style nonce="{{ Vite::cspNonce() }}">
             html {
-                background-color: oklch(1 0 0);
+                background-color: oklch(0.992 0.003 285);
             }
 
             html.dark {
-                background-color: oklch(0.145 0 0);
+                background-color: oklch(0.15 0.018 285);
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
+        <meta name="theme-color" content="#4f46e5">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         @fonts
 
