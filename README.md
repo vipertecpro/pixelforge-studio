@@ -99,7 +99,7 @@ Use **one Pixelforge API key per environment**. Each key has its own webhook URL
 for local work use a tunnel (Expose, ngrok, Cloudflare Tunnel) and register `https://<tunnel>/webhooks/pixelforge`
 on the key. Without one the polling fallback still settles everything within a minute.
 
-Tests and checks (this is also what CI runs):
+Tests and checks (everything in one command):
 
 ```bash
 composer ci:check                   # frontend lint and format, type checks, Pint, PHPStan, Pest
