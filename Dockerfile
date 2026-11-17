@@ -31,7 +31,7 @@ RUN mkdir -p bootstrap/cache storage/framework/cache storage/framework/sessions 
 # ---- The image that runs.
 FROM dunglas/frankenphp:1.13-php8.5-bookworm AS app
 
-RUN install-php-extensions pdo_pgsql pcntl opcache
+RUN install-php-extensions pdo_pgsql pcntl opcache zip
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/php.ini $PHP_INI_DIR/conf.d/zz-app.ini
 
