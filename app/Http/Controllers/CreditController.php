@@ -24,9 +24,9 @@ class CreditController extends Controller
             'reserved' => Nano::format($summary['reserved'], 2),
             'available' => Nano::format(max(0, $summary['available']), 2),
             'packs' => array_map(fn (int $usd): array => ['usd' => $usd, 'label' => '$'.$usd], $this->packs()),
-            'transactions' => CreditTransactionResource::collection(
+            'transactions' => Inertia::defer(fn () => CreditTransactionResource::collection(
                 $user->creditTransactions()->with('generation:id,prompt')->latest('id')->paginate(10)
-            ),
+            )),
         ]);
     }
 

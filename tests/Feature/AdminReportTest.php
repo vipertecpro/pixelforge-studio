@@ -60,6 +60,22 @@ function fakePixelforgeUsage(array $days): void
 
 const REPORT_DATES = ['from' => '2026-11-16', 'to' => '2026-11-17'];
 
+describe('first paint', function () {
+    it('opens at once, without waiting for Pixelforge, and brings the figures in after', function () {
+        Http::fake();
+
+        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('admin/Report')
+                ->where('filters.from', '2026-11-16')
+                ->missing('totals')
+                ->missing('days')
+                ->missing('connection'));
+
+        Http::assertNothingSent();
+    });
+});
+
 describe('access', function () {
     it('is for operators only', function () {
         $this->get(route('admin.report'))->assertRedirect(route('login'));
@@ -84,7 +100,7 @@ describe('by day', function () {
             ['date' => '2026-11-17', 'generations' => 1, 'cost_usd' => '0.050000000'],
         ]);
 
-        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page
+        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
             ->component('admin/Report')
             ->has('days', 2)
             ->where('days.0.day', '2026-11-17')
@@ -100,7 +116,7 @@ describe('by day', function () {
             ->where('totals.generations', 3)
             ->where('totals.charged', '$0.5693875')
             ->where('totals.provider_cost', '$0.45551')
-            ->where('totals.profit', '$0.1138775'));
+            ->where('totals.profit', '$0.1138775')));
     });
 
     it('shows each day agreeing with Pixelforge\'s own usage report', function () {
@@ -110,12 +126,12 @@ describe('by day', function () {
             ['date' => '2026-11-17', 'generations' => 1, 'cost_usd' => '0.050000000'],
         ]);
 
-        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page
+        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
             ->where('days.0.matches', true)
             ->where('days.0.pixelforge_cost', '$0.0500')
             ->where('days.1.matches', true)
             ->where('totals.reconciliation', 'match')
-            ->where('totals.pixelforge_cost', '$0.45551'));
+            ->where('totals.pixelforge_cost', '$0.45551')));
 
         Http::assertSent(fn ($request) => str_contains($request->url(), 'start_date=2026-11-16')
             && str_contains($request->url(), 'end_date=2026-11-17')
@@ -129,31 +145,31 @@ describe('by day', function () {
             ['date' => '2026-11-17', 'generations' => 1, 'cost_usd' => '0.060000000'],
         ]);
 
-        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page
+        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
             ->where('days.0.matches', false)
             ->where('days.1.matches', true)
             ->where('totals.reconciliation', 'mismatch')
-            ->where('totals.mismatched_days', 1));
+            ->where('totals.mismatched_days', 1)));
     });
 
     it('still reports our own numbers when Pixelforge cannot be reached', function () {
         reportFixtures();
         Http::fake(['pixelforge.test/v1/usage*' => fn () => throw new ConnectionException('down')]);
 
-        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page
+        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
             ->where('totals.reconciliation', 'unavailable')
             ->where('days.0.matches', null)
-            ->where('totals.charged', '$0.5693875'));
+            ->where('totals.charged', '$0.5693875')));
     });
 
     it('lists days with no activity as zeros', function () {
         fakePixelforgeUsage([]);
 
         $this->actingAs(admin())->get(route('admin.report', ['from' => '2026-11-01', 'to' => '2026-11-03']))
-            ->assertInertia(fn (AssertableInertia $page) => $page
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
                 ->has('days', 3)
                 ->where('days.1.generations', 0)
-                ->where('days.1.charged', '$0.0000'));
+                ->where('days.1.charged', '$0.0000')));
     });
 });
 
@@ -163,7 +179,7 @@ describe('by user and by day and user', function () {
         fakePixelforgeUsage([]);
 
         $this->actingAs(admin())->get(route('admin.report', [...REPORT_DATES, 'view' => 'user']))
-            ->assertInertia(fn (AssertableInertia $page) => $page
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
                 ->has('users', 2)
                 ->where('users.0.email', 'ann@example.com')
                 ->where('users.0.generations', 2)
@@ -171,7 +187,7 @@ describe('by user and by day and user', function () {
                 ->where('users.0.provider_cost', '$0.35551')
                 ->where('users.0.profit', '$0.0888775')
                 ->where('users.1.email', 'bob@example.com')
-                ->where('users.1.charged', '$0.1250'));
+                ->where('users.1.charged', '$0.1250')));
     });
 
     it('breaks every day down by user', function () {
@@ -179,13 +195,13 @@ describe('by user and by day and user', function () {
         fakePixelforgeUsage([]);
 
         $this->actingAs(admin())->get(route('admin.report', [...REPORT_DATES, 'view' => 'day_user']))
-            ->assertInertia(fn (AssertableInertia $page) => $page
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
                 ->has('dayUsers', 3)
                 ->where('dayUsers.0.day', '2026-11-17')
                 ->where('dayUsers.0.email', 'ann@example.com')
                 ->where('dayUsers.1.day', '2026-11-16')
                 ->where('dayUsers.1.email', 'ann@example.com')
-                ->where('dayUsers.2.email', 'bob@example.com'));
+                ->where('dayUsers.2.email', 'bob@example.com')));
     });
 });
 
@@ -193,7 +209,7 @@ describe('dates', function () {
     it('defaults to the last 30 days', function () {
         fakePixelforgeUsage([]);
 
-        $this->actingAs(admin())->get(route('admin.report'))->assertInertia(fn (AssertableInertia $page) => $page->has('days', 30));
+        $this->actingAs(admin())->get(route('admin.report'))->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page->has('days', 30)));
     });
 
     it('refuses a range longer than Pixelforge reports on', function () {
@@ -238,12 +254,12 @@ describe('the connection card', function () {
 
         $response = $this->actingAs(admin())->get(route('admin.report', REPORT_DATES));
 
-        $response->assertInertia(fn (AssertableInertia $page) => $page
+        $response->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
             ->where('connection.webhook_url', route('webhooks.pixelforge'))
             ->where('connection.api_key_configured', true)
             ->where('connection.webhook_secret_configured', true)
             ->where('connection.api_reachable', true)
-            ->where('connection.last_event_at', null));
+            ->where('connection.last_event_at', null)));
         expect($response->getContent())->not->toContain('pf_test_key')->not->toContain('whsec_super_secret_value');
     });
 
@@ -252,11 +268,11 @@ describe('the connection card', function () {
         Http::fake(['pixelforge.test/v1/usage*' => Http::response('nope', 401)]);
         $event = PixelforgeEvent::create(['event_id' => 'evt_1', 'type' => 'ping', 'payload' => []]);
 
-        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page
+        $this->actingAs(admin())->get(route('admin.report', REPORT_DATES))->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
             ->where('connection.api_key_configured', false)
             ->where('connection.webhook_secret_configured', false)
             ->where('connection.api_reachable', false)
-            ->where('connection.last_event_at', $event->created_at->toIso8601String()));
+            ->where('connection.last_event_at', $event->created_at->toIso8601String())));
     });
 });
 
@@ -270,10 +286,10 @@ describe('deleted accounts', function () {
         fakePixelforgeUsage([['date' => '2026-11-16', 'generations' => 1, 'cost_usd' => '0.100000000'], ['date' => '2026-11-17', 'generations' => 0, 'cost_usd' => '0.000000000']]);
 
         $this->actingAs(admin())->get(route('admin.report', [...REPORT_DATES, 'view' => 'user']))
-            ->assertInertia(fn (AssertableInertia $page) => $page
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
                 ->where('totals.reconciliation', 'match')
                 ->has('users', 1)
                 ->where('users.0.name', 'Deleted account')
-                ->where('users.0.charged', '$0.1250'));
+                ->where('users.0.charged', '$0.1250')));
     });
 });

@@ -165,7 +165,8 @@ describe('buying credits', function () {
                 ->where('balance', '$5.00')
                 ->where('available', '$5.00')
                 ->has('packs', 3)
-                ->has('transactions.data', 1));
+                ->missing('transactions')
+                ->loadDeferredProps(fn (AssertableInertia $page) => $page->has('transactions.data', 1)));
     });
 
     it('adds credits straight away, with no payment', function () {

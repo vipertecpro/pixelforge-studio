@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Deferred, Head, Link, router } from '@inertiajs/vue3';
 import {
     ArrowDownLeft,
     Coins,
@@ -10,6 +10,7 @@ import {
 } from '@lucide/vue';
 import { ref } from 'vue';
 import type { Component } from 'vue';
+import ActivitySkeleton from '@/components/ActivitySkeleton.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { index, store } from '@/routes/credits';
@@ -19,7 +20,7 @@ defineProps<{
     reserved: string;
     available: string;
     packs: { usd: number; label: string }[];
-    transactions: {
+    transactions?: {
         data: {
             id: number;
             type: 'signup_bonus' | 'top_up' | 'charge';
@@ -158,86 +159,102 @@ function formatDate(iso: string | null): string {
         <section class="mt-10" aria-labelledby="history-heading">
             <h2 id="history-heading" class="text-base font-medium">Activity</h2>
 
-            <ul
-                v-if="transactions.data.length"
-                class="mt-4 divide-y rounded-2xl border bg-card"
-            >
-                <li
-                    v-for="transaction in transactions.data"
-                    :key="transaction.id"
-                    class="flex items-center gap-4 p-4"
-                >
-                    <span
-                        class="flex size-9 shrink-0 items-center justify-center rounded-xl"
-                        :class="
-                            transaction.is_charge
-                                ? 'bg-primary/10 text-primary'
-                                : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                        "
-                    >
-                        <component
-                            :is="typeIcon[transaction.type]"
-                            class="size-4"
-                            aria-hidden="true"
-                        />
-                    </span>
-                    <div class="min-w-0 flex-1">
-                        <p class="truncate text-sm font-medium">
-                            {{ typeLabel[transaction.type] }}
-                        </p>
-                        <p class="truncate text-xs text-muted-foreground">
-                            {{ transaction.description }} ·
-                            {{ formatDate(transaction.created_at) }}
-                        </p>
-                    </div>
-                    <p
-                        class="text-sm font-semibold tabular-nums"
-                        :class="
-                            transaction.is_charge
-                                ? ''
-                                : 'text-emerald-700 dark:text-emerald-400'
-                        "
-                    >
-                        {{ transaction.amount }}
-                    </p>
-                </li>
-            </ul>
-            <p v-else class="mt-4 text-sm text-muted-foreground">
-                Nothing yet.
-            </p>
+            <Deferred data="transactions">
+                <template #fallback>
+                    <ActivitySkeleton />
+                </template>
 
-            <nav
-                v-if="transactions.meta.last_page > 1"
-                class="mt-4 flex items-center justify-between text-sm"
-                aria-label="Pagination"
-            >
-                <Button
-                    v-if="transactions.links.prev"
-                    as-child
-                    variant="outline"
-                    size="sm"
-                >
-                    <Link :href="transactions.links.prev" preserve-scroll>
-                        Newer
-                    </Link>
-                </Button>
-                <span v-else />
-                <span class="text-muted-foreground">
-                    Page {{ transactions.meta.current_page }} of
-                    {{ transactions.meta.last_page }}
-                </span>
-                <Button
-                    v-if="transactions.links.next"
-                    as-child
-                    variant="outline"
-                    size="sm"
-                >
-                    <Link :href="transactions.links.next" preserve-scroll>
-                        Older
-                    </Link>
-                </Button>
-                <span v-else />
-            </nav>
+                <template v-if="transactions">
+                    <ul
+                        v-if="transactions.data.length"
+                        class="mt-4 divide-y rounded-2xl border bg-card"
+                    >
+                        <li
+                            v-for="transaction in transactions.data"
+                            :key="transaction.id"
+                            class="flex items-center gap-4 p-4"
+                        >
+                            <span
+                                class="flex size-9 shrink-0 items-center justify-center rounded-xl"
+                                :class="
+                                    transaction.is_charge
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                                "
+                            >
+                                <component
+                                    :is="typeIcon[transaction.type]"
+                                    class="size-4"
+                                    aria-hidden="true"
+                                />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium">
+                                    {{ typeLabel[transaction.type] }}
+                                </p>
+                                <p
+                                    class="truncate text-xs text-muted-foreground"
+                                >
+                                    {{ transaction.description }} ·
+                                    {{ formatDate(transaction.created_at) }}
+                                </p>
+                            </div>
+                            <p
+                                class="text-sm font-semibold tabular-nums"
+                                :class="
+                                    transaction.is_charge
+                                        ? ''
+                                        : 'text-emerald-700 dark:text-emerald-400'
+                                "
+                            >
+                                {{ transaction.amount }}
+                            </p>
+                        </li>
+                    </ul>
+                    <p v-else class="mt-4 text-sm text-muted-foreground">
+                        Nothing yet.
+                    </p>
+
+                    <nav
+                        v-if="transactions.meta.last_page > 1"
+                        class="mt-4 flex items-center justify-between text-sm"
+                        aria-label="Pagination"
+                    >
+                        <Button
+                            v-if="transactions.links.prev"
+                            as-child
+                            variant="outline"
+                            size="sm"
+                        >
+                            <Link
+                                :href="transactions.links.prev"
+                                preserve-scroll
+                            >
+                                Newer
+                            </Link>
+                        </Button>
+                        <span v-else />
+                        <span class="text-muted-foreground">
+                            Page {{ transactions.meta.current_page }} of
+                            {{ transactions.meta.last_page }}
+                        </span>
+                        <Button
+                            v-if="transactions.links.next"
+                            as-child
+                            variant="outline"
+                            size="sm"
+                        >
+                            <Link
+                                :href="transactions.links.next"
+                                preserve-scroll
+                            >
+                                Older
+                            </Link>
+                        </Button>
+                        <span v-else />
+                    </nav>
+                </template>
+            </Deferred>
         </section>
     </div>
 </template>

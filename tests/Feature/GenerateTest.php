@@ -215,6 +215,16 @@ describe('security headers', function () {
 });
 
 describe('history', function () {
+    it('opens at once and brings the list in after, so skeletons can hold its place', function () {
+        $user = fundedUser();
+        Generation::factory()->for($user)->create();
+
+        $this->actingAs($user)->get(route('generations.index'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('generations/Index')
+                ->missing('generations'));
+    });
+
     it('lists only the user\'s own generations, newest first', function () {
         $user = fundedUser();
         $older = Generation::factory()->for($user)->create(['created_at' => now()->subHour()]);
@@ -224,11 +234,11 @@ describe('history', function () {
         $this->actingAs($user)
             ->get(route('generations.index'))
             ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
                 ->component('generations/Index')
                 ->has('generations.data', 2)
                 ->where('generations.data.0.id', $newer->id)
-                ->where('generations.data.1.id', $older->id));
+                ->where('generations.data.1.id', $older->id)));
     });
 
     it('shows estimate, charge, status and a usable image link', function () {
@@ -244,13 +254,13 @@ describe('history', function () {
 
         $this->actingAs($user)
             ->get(route('generations.index'))
-            ->assertInertia(fn (AssertableInertia $page) => $page
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
                 ->where('generations.data.0.status', 'succeeded')
                 ->where('generations.data.0.estimated_min', '$0.058175')
                 ->where('generations.data.0.estimated_max', '$0.086325')
                 ->where('generations.data.0.charged', '$0.3818875')
                 ->where('generations.data.0.image_url', 'https://pixelforge.example/a.png')
-                ->where('generations.data.0.image_expired', false));
+                ->where('generations.data.0.image_expired', false)));
     });
 
     it('hides an image link that has expired', function () {
@@ -264,9 +274,9 @@ describe('history', function () {
 
         $this->actingAs($user)
             ->get(route('generations.index'))
-            ->assertInertia(fn (AssertableInertia $page) => $page
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page
                 ->where('generations.data.0.image_url', null)
-                ->where('generations.data.0.image_expired', true));
+                ->where('generations.data.0.image_expired', true)));
     });
 
     it('marks a generation Pixelforge has not accepted yet as still being sent', function () {
@@ -275,7 +285,7 @@ describe('history', function () {
 
         $this->actingAs($user)
             ->get(route('generations.index'))
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('generations.data.0.sending', true));
+            ->assertInertia(fn (AssertableInertia $page) => $page->loadDeferredProps(fn (AssertableInertia $page) => $page->where('generations.data.0.sending', true)));
     });
 });
 

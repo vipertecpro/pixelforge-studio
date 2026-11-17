@@ -28,10 +28,12 @@ class GenerationController extends Controller
 {
     public function index(Request $request): Response
     {
-        $generations = $request->user()->generations()->latest()->paginate(12);
-
         return Inertia::render('generations/Index', [
-            'generations' => GenerationResource::collection($generations),
+            // The list streams in after the page, with skeletons holding its place; the
+            // query only runs when the data is asked for (including each live refresh).
+            'generations' => Inertia::defer(fn () => GenerationResource::collection(
+                $request->user()->generations()->latest()->paginate(12)
+            )),
         ]);
     }
 

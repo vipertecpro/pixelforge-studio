@@ -19,10 +19,15 @@ use Inertia\Response;
  * The operators' view: what users were charged, what Pixelforge billed us and
  * the profit, per day and per user. Pixelforge's own GET /v1/usage is fetched
  * for the same dates so every day shows whether our records agree with theirs.
+ *
+ * The page opens at once with its filters; the figures (which include a call to
+ * Pixelforge) arrive as one deferred group while skeletons hold their place.
  */
 class ReportController extends Controller
 {
     private const MAX_DAYS = 92;
+
+    private const DEFERRED_GROUP = 'report';
 
     public function __invoke(Request $request, UsageReport $report, PixelforgeClient $client): Response
     {
@@ -44,6 +49,28 @@ class ReportController extends Controller
         }
 
         $view = $filters['view'] ?? 'day';
+
+        // The deferred props share one computation, run once however many are asked for.
+        $data = null;
+        $build = function () use (&$data, $report, $client, $from, $to, $view): array {
+            return $data ??= $this->build($report, $client, $from, $to, $view);
+        };
+
+        return Inertia::render('admin/Report', [
+            'filters' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'view' => $view],
+            'totals' => Inertia::defer(fn () => $build()['totals'], self::DEFERRED_GROUP),
+            'days' => Inertia::defer(fn () => $build()['days'], self::DEFERRED_GROUP),
+            'users' => Inertia::defer(fn () => $build()['users'], self::DEFERRED_GROUP),
+            'dayUsers' => Inertia::defer(fn () => $build()['dayUsers'], self::DEFERRED_GROUP),
+            'connection' => Inertia::defer(fn () => $build()['connection'], self::DEFERRED_GROUP),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function build(UsageReport $report, PixelforgeClient $client, CarbonImmutable $from, CarbonImmutable $to, string $view): array
+    {
         $days = $report->byDay($from, $to);
         $reported = $this->pixelforgeUsage($client, $from, $to);
 
@@ -72,8 +99,7 @@ class ReportController extends Controller
             $totals['cost'] += $row['cost'];
         }
 
-        return Inertia::render('admin/Report', [
-            'filters' => ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'view' => $view],
+        return [
             'totals' => [
                 'generations' => $totals['generations'],
                 'charged' => Nano::format($totals['charged']),
@@ -93,7 +119,7 @@ class ReportController extends Controller
             'days' => $dayRows,
             'users' => $view === 'user' ? $this->formatRows($report->byUser($from, $to)) : [],
             'dayUsers' => $view === 'day_user' ? $this->formatRows($report->byDayAndUser($from, $to)) : [],
-        ]);
+        ];
     }
 
     /**
