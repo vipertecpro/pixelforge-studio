@@ -152,4 +152,4 @@ resources/js/pages/ generations, credits, admin
 tests/              Pest: pricing, webhooks, submission, sync, credits, report
 ```
 
-This app was built with AI assistance (Claude Code). Every part of it is mine to explain and extend.
+Built with AI assistance (Claude Code), which the brief allows.
