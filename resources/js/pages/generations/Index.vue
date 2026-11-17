@@ -34,7 +34,7 @@ const hasActive = computed(() =>
 // Statuses are live: while anything is still running, refresh just the list.
 const { start, stop } = usePoll(
     2000,
-    { only: ['generations'] },
+    { only: ['generations', 'credits'] },
     { autoStart: false },
 );
 
