@@ -88,7 +88,7 @@ Needs PHP 8.3+ (tested on 8.4 and 8.5), Composer, and Node 22.18+, 24.11+ or 26+
 
 ```bash
 composer setup                      # install, .env, key, migrate, build
-# add your key to .env: PIXELFORGE_API_KEY=...
+# put your Pixelforge key in .env (PIXELFORGE_API_KEY)
 php artisan queue:work              # sends images and processes webhook events
 php artisan schedule:work           # the polling fallback, every minute
 composer dev                        # or: the app, queue and Vite together
