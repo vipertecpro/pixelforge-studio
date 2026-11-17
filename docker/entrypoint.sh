@@ -5,6 +5,8 @@
 set -e
 
 export SERVER_NAME=":${PORT:-10000}"
+# Render tells the service its own public address.
+export APP_URL="${APP_URL:-$RENDER_EXTERNAL_URL}"
 
 php artisan migrate --force --no-interaction
 # Creates or updates the operators' account when ADMIN_EMAIL and ADMIN_PASSWORD are set.
