@@ -2,6 +2,7 @@
 
 namespace App\Generations;
 
+use App\Credits\CreditLedger;
 use App\Enums\GenerationStatus;
 use App\Models\Generation;
 use App\Pricing\GenerationPricer;
@@ -24,7 +25,10 @@ use InvalidArgumentException;
  */
 final class GenerationSettler
 {
-    public function __construct(private readonly GenerationPricer $pricer) {}
+    public function __construct(
+        private readonly GenerationPricer $pricer,
+        private readonly CreditLedger $ledger,
+    ) {}
 
     /**
      * Apply a Pixelforge generation object (from a webhook, a poll or the create
@@ -137,6 +141,10 @@ final class GenerationSettler
         $generation->error_code = null;
         $generation->error_message = null;
         $generation->completed_at = $this->time($payload['completed_at'] ?? null) ?? now();
+
+        // The charge is written in the same transaction that makes the generation
+        // final, so it exists exactly once.
+        $this->ledger->charge($generation);
     }
 
     /**

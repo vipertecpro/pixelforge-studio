@@ -3,7 +3,6 @@
 use App\Enums\GenerationStatus;
 use App\Jobs\SubmitGeneration;
 use App\Models\Generation;
-use App\Models\User;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -49,7 +48,7 @@ describe('access', function () {
 
 describe('price before submitting', function () {
     it('shows the exact range, with the markup, from the live price list', function () {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->postJson(route('generations.estimate'), generationInput())
             ->assertOk()
             ->assertJson([
@@ -65,14 +64,14 @@ describe('price before submitting', function () {
     });
 
     it('prices reference images', function () {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->postJson(route('generations.estimate'), generationInput(['reference_images' => ['https://example.com/a.png', 'https://example.com/b.png']]))
             ->assertOk()
             ->assertJsonPath('tokens.image', 1530);
     });
 
     it('answers while the prompt is still empty', function () {
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->postJson(route('generations.estimate'), generationInput(['prompt' => '']))
             ->assertOk();
     });
@@ -80,7 +79,7 @@ describe('price before submitting', function () {
     it('says so when Pixelforge prices are unreachable and nothing is cached', function () {
         pricingIsDown();
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->postJson(route('generations.estimate'), generationInput())
             ->assertStatus(503)
             ->assertJsonPath('message', 'Prices are unavailable right now. Please try again in a moment.');
@@ -90,7 +89,7 @@ describe('price before submitting', function () {
 describe('submitting', function () {
     it('saves the generation with its estimate and sends it in the background', function () {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = fundedUser();
 
         $this->actingAs($user)
             ->post(route('generations.store'), generationInput(['size' => '1536x1024', 'quality' => 'high']))
@@ -109,7 +108,7 @@ describe('submitting', function () {
     it('drops blank reference rows and keeps real ones', function () {
         Queue::fake();
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->post(route('generations.store'), generationInput(['reference_images' => ['https://example.com/a.png', '', '  ']]))
             ->assertRedirect();
 
@@ -119,7 +118,7 @@ describe('submitting', function () {
     it('rejects what Pixelforge would reject', function (array $override, string $field) {
         Queue::fake();
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->post(route('generations.store'), generationInput($override))
             ->assertSessionHasErrors($field);
 
@@ -138,7 +137,7 @@ describe('submitting', function () {
     it('accepts a prompt of exactly 4,000 characters', function () {
         Queue::fake();
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->post(route('generations.store'), generationInput(['prompt' => str_repeat('a', 4000)]))
             ->assertSessionHasNoErrors();
     });
@@ -147,7 +146,7 @@ describe('submitting', function () {
         Queue::fake();
         pricingIsDown();
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(fundedUser())
             ->post(route('generations.store'), generationInput())
             ->assertSessionHasErrors('form');
 
@@ -158,7 +157,7 @@ describe('submitting', function () {
 describe('fair use', function () {
     it('stops a user from filling Pixelforge with in-flight images', function () {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = fundedUser();
         Generation::factory()->for($user)->count(3)->processing()->create();
 
         $this->actingAs($user)
@@ -171,7 +170,7 @@ describe('fair use', function () {
 
     it('lets them submit again once one has finished', function () {
         Queue::fake();
-        $user = User::factory()->create();
+        $user = fundedUser();
         Generation::factory()->for($user)->count(2)->processing()->create();
         Generation::factory()->for($user)->accepted()->create(['status' => GenerationStatus::Succeeded, 'charged_nano' => 1]);
 
@@ -185,7 +184,7 @@ describe('fair use', function () {
     it('stops a user at the daily limit', function () {
         Queue::fake();
         config(['pixelforge.limits.per_user_per_day' => 2]);
-        $user = User::factory()->create();
+        $user = fundedUser();
         Generation::factory()->for($user)->count(2)->accepted()->create(['status' => GenerationStatus::Failed]);
 
         $this->actingAs($user)
@@ -215,7 +214,7 @@ describe('security headers', function () {
 
 describe('history', function () {
     it('lists only the user\'s own generations, newest first', function () {
-        $user = User::factory()->create();
+        $user = fundedUser();
         $older = Generation::factory()->for($user)->create(['created_at' => now()->subHour()]);
         $newer = Generation::factory()->for($user)->create(['created_at' => now()]);
         Generation::factory()->create();
@@ -231,7 +230,7 @@ describe('history', function () {
     });
 
     it('shows estimate, charge, status and a usable image link', function () {
-        $user = User::factory()->create();
+        $user = fundedUser();
         Generation::factory()->for($user)->accepted()->create([
             'status' => GenerationStatus::Succeeded,
             'estimated_min_nano' => 58_175_000,
@@ -253,7 +252,7 @@ describe('history', function () {
     });
 
     it('hides an image link that has expired', function () {
-        $user = User::factory()->create();
+        $user = fundedUser();
         Generation::factory()->for($user)->accepted()->create([
             'status' => GenerationStatus::Succeeded,
             'charged_nano' => 1,
@@ -269,7 +268,7 @@ describe('history', function () {
     });
 
     it('marks a generation Pixelforge has not accepted yet as still being sent', function () {
-        $user = User::factory()->create();
+        $user = fundedUser();
         Generation::factory()->for($user)->create();
 
         $this->actingAs($user)

@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Credits\CreditLedger;
+use App\Pricing\Nano;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -40,6 +42,10 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+            ],
+            'credits' => fn (): ?array => $request->user() === null ? null : [
+                'balance' => Nano::format(app(CreditLedger::class)->balanceNano($request->user()), 2),
+                'available' => Nano::format(app(CreditLedger::class)->availableNano($request->user()), 2),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];

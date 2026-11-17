@@ -20,6 +20,7 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            credits: { balance: string; available: string } | null;
             [key: string]: unknown;
         };
     }

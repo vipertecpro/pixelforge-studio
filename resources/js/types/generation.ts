@@ -24,6 +24,8 @@ export type Estimate = {
     provider_min: string;
     provider_max: string;
     markup_percent: number;
+    available: string;
+    affordable: boolean;
     tokens: {
         text: [number, number];
         image: number;

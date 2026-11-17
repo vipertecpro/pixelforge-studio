@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import {
     Gauge,
     Info,
@@ -9,6 +9,7 @@ import {
     ShieldCheck,
     Sparkles,
     Square,
+    Wallet,
     Zap,
 } from '@lucide/vue';
 import { computed } from 'vue';
@@ -22,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useEstimate } from '@/composables/useEstimate';
+import { index as creditsIndex } from '@/routes/credits';
 import { create, store } from '@/routes/generations';
 
 const props = defineProps<{
@@ -97,11 +99,16 @@ const formError = computed(
     () => (form.errors as Record<string, string | undefined>).form,
 );
 
+const cannotAfford = computed(
+    () => estimate.value !== null && !estimate.value.affordable,
+);
+
 const canSubmit = computed(
     () =>
         form.prompt.trim() !== '' &&
         !form.processing &&
-        estimate.value !== null,
+        estimate.value !== null &&
+        estimate.value.affordable,
 );
 
 function submit() {
@@ -261,6 +268,27 @@ function submit() {
                         </div>
                     </dl>
                 </details>
+
+                <p
+                    v-if="cannotAfford && estimate"
+                    class="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm"
+                    role="alert"
+                >
+                    <Wallet
+                        class="mt-0.5 size-4 shrink-0 text-amber-600"
+                        aria-hidden="true"
+                    />
+                    <span>
+                        This could cost up to {{ estimate.max }} and you have
+                        {{ estimate.available }} available.
+                        <Link
+                            :href="creditsIndex()"
+                            class="font-medium underline underline-offset-4"
+                            >Add credits</Link
+                        >
+                        to continue.
+                    </span>
+                </p>
 
                 <InputError :message="formError" />
 

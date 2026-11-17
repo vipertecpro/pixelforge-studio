@@ -42,6 +42,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Credits
+    |--------------------------------------------------------------------------
+    |
+    | Credits are US dollars. New accounts get a welcome credit, and the fake
+    | "Buy credits" button offers these pack sizes. No payment is ever taken.
+    |
+    */
+
+    'credits' => [
+        'signup_bonus_nano' => 1_000_000_000,
+        'packs_usd' => [5, 10, 25],
+    ],
+
+    /*
+    | The operators' account, created by `php artisan pixelforge:admin`. The
+    | password is only ever read from the environment.
+    */
+    'admin' => [
+        'email' => env('ADMIN_EMAIL'),
+        'password' => env('ADMIN_PASSWORD'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Fair use
     |--------------------------------------------------------------------------
     |

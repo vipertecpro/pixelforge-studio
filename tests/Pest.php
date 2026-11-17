@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\CreditTransaction;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,6 +45,17 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+/**
+ * A user who has bought credits, so they can submit images.
+ */
+function fundedUser(int $usd = 5): User
+{
+    $user = User::factory()->create();
+    CreditTransaction::factory()->for($user)->create(['amount_nano' => $usd * 1_000_000_000]);
+
+    return $user;
+}
 
 /**
  * A copy of Pixelforge's GET /v1/pricing response.
