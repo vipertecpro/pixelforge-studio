@@ -7,8 +7,8 @@ charged the **exact** cost plus a 25% markup once the image is done.
 Built for the PromptEdit Senior Product Engineer take-home. Money is the point of the exercise, so that is
 where most of the care went.
 
-- Live app: _added when deployed_
-- Pixelforge account used by the live app: _added when submitted_
+- Live app: https://pixelforge-studio-5nbl.onrender.com (Render's free plan: the first visit after 15 quiet minutes takes about a minute)
+- The Pixelforge account and the operator login are in the application form
 
 ## What it does
 
